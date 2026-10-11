@@ -58,10 +58,25 @@ def api_test_db():
 
     app.dependency_overrides[get_db] = override_get_db
 
+    from src.core.redis import get_redis_client
+    r = get_redis_client()
+    if r:
+        try:
+            r.delete("ratelimit:ai:proj-api-1")
+        except Exception:
+            pass
+
     yield init_db
+
+    if r:
+        try:
+            r.delete("ratelimit:ai:proj-api-1")
+        except Exception:
+            pass
 
     app.dependency_overrides.clear()
     init_db.close()
+
 
 
 @pytest.fixture

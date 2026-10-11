@@ -262,7 +262,106 @@ All client-visible errors must conform to the unified structured envelope:
   }
   ```
 
+### F. SaaS Subscriptions & Usage Accounting
+
+#### 1. Retrieve Subscription Plan (`GET /api/v1/subscriptions/plan?project_id={project_id}`)
+- **Security**: Bearer JWT; requires project membership.
+- **Response (200 OK)**:
+  ```json
+  {
+    "project_id": "proj-123",
+    "plan_tier": "FREE",
+    "status": "ACTIVE",
+    "current_period_start": "2026-10-11T08:00:00Z",
+    "current_period_end": "2026-11-10T08:00:00Z"
+  }
+  ```
+
+#### 2. Retrieve Periodic Usage (`GET /api/v1/subscriptions/usage?project_id={project_id}`)
+- **Security**: Bearer JWT; requires project membership.
+- **Response (200 OK)**:
+  ```json
+  {
+    "project_id": "proj-123",
+    "plan_tier": "FREE",
+    "metric": "ai_plan_generations",
+    "used": 12,
+    "limit": 20,
+    "remaining": 8,
+    "utilization_percent": 60.0,
+    "period_start": "2026-10-11T08:00:00Z",
+    "period_end": "2026-11-10T08:00:00Z"
+  }
+  ```
+
+#### 3. Retrieve Tier Entitlements (`GET /api/v1/subscriptions/entitlements?tier={tier}`)
+- **Response (200 OK)**:
+  ```json
+  {
+    "plan_tier": "FREE",
+    "display_name": "Free Community Tier",
+    "max_projects": 2,
+    "max_team_members": 5,
+    "max_ai_generations_per_month": 20,
+    "ai_rate_limit_per_minute": 3,
+    "features": ["ai_planning_basic", "kanban_board", "standard_notifications"]
+  }
+  ```
+
+#### 4. Request Plan Upgrade (`POST /api/v1/subscriptions/upgrade-request`)
+- **Security**: Bearer JWT; requires project `LEAD` or `ADMIN`.
+- **Request Body**:
+  ```json
+  {
+    "project_id": "proj-123",
+    "requested_tier": "TEAM"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "project_id": "proj-123",
+    "plan_tier": "TEAM",
+    "status": "ACTIVE",
+    "message": "Plan successfully updated to TEAM",
+    "current_period_start": "2026-10-11T08:00:00Z",
+    "current_period_end": "2026-11-10T08:00:00Z"
+  }
+  ```
+
+#### 5. Quota & Rate Limit Error Envelopes (HTTP 429)
+- **Monthly Quota Exceeded**:
+  ```json
+  {
+    "error": {
+      "code": "QUOTA_EXCEEDED",
+      "message": "Monthly AI plan generation quota of 20 reached for 'FREE' plan. Please upgrade your subscription tier.",
+      "details": {
+        "plan_tier": "FREE",
+        "limit": 20,
+        "used": 20,
+        "metric": "ai_plan_generations"
+      }
+    }
+  }
+  ```
+- **Burst Rate Limit Exceeded**:
+  ```json
+  {
+    "error": {
+      "code": "RATE_LIMIT_EXCEEDED",
+      "message": "Rate limit exceeded: maximum 3 AI requests per minute allowed for FREE plan. Please retry in 42 seconds.",
+      "details": {
+        "plan_tier": "FREE",
+        "limit_per_minute": 3,
+        "retry_after_seconds": 42
+      }
+    }
+  }
+  ```
+
 ---
+
 
 ## 5. OpenAPI Integration Workflow
 

@@ -32,6 +32,7 @@ from src.domains.projects.models import Project, ProjectMember
 from src.domains.goals.models import Goal
 from src.domains.ai.models import PlanProposal
 from src.domains.tasks.models import Task, TaskDependency
+from src.domains.subscriptions.models import Subscription, UsageRecord
 
 # Add your model's MetaData object here for 'autogenerate' support
 target_metadata = Base.metadata

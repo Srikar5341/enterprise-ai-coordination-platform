@@ -100,6 +100,20 @@ class RateLimitError(AppException):
         )
 
 
+class QuotaExceededError(AppException):
+    def __init__(
+        self,
+        message: str = "Monthly AI plan generation quota exceeded for current subscription tier",
+        details: Optional[Any] = None,
+    ):
+        super().__init__(
+            code="QUOTA_EXCEEDED",
+            message=message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            details=details,
+        )
+
+
 class ValidationError(AppException):
     def __init__(self, message: str = "Validation failed", details: Optional[Any] = None):
         super().__init__(

@@ -17,6 +17,8 @@ from src.domains.ai.schemas import (
     ProposalRejectResponse,
 )
 from src.domains.goals.models import Goal
+from src.domains.subscriptions.rate_limiter import check_ai_rate_limit
+from src.domains.subscriptions.service import subscription_service
 
 router = APIRouter(tags=["AI Planning"])
 
@@ -39,6 +41,15 @@ def generate_plan(
 
     # Authorize team lead permissions
     verify_project_lead_permission(goal.project_id, current_user, db)
+
+    # Resolve subscription plan tier
+    subscription = subscription_service.get_or_create_subscription(goal.project_id, db)
+
+    # 1. Enforce Redis burst rate limit (with graceful fallback if Redis down)
+    check_ai_rate_limit(project_id=goal.project_id, tier=subscription.plan_tier)
+
+    # 2. Enforce MySQL monthly quota ceiling and atomically record persistent usage
+    subscription_service.check_and_increment_quota(project_id=goal.project_id, db=db)
 
     # Prompt hosted LLM with deterministic validation
     plan_result = llm_service.generate_plan(
