@@ -11,12 +11,12 @@
         "tags": [
           "Health"
         ],
-        "summary": "Service health and database readiness check",
-        "description": "Evaluate service liveness and database ping readiness.\n\nReturns HTTP 200 when healthy, or HTTP 503 when the database is unreachable.",
+        "summary": "Service health, database, and Redis readiness check",
+        "description": "Evaluate service liveness, database ping readiness, and Redis connectivity.\n\nReturns HTTP 200 when healthy (or degraded if Redis is down), or HTTP 503 when the database is unreachable.",
         "operationId": "get_health_api_v1_health_get",
         "responses": {
           "200": {
-            "description": "Service is healthy and database is connected",
+            "description": "Service is healthy or degraded (Redis unreachable)",
             "content": {
               "application/json": {
                 "schema": {
@@ -570,6 +570,240 @@
           }
         }
       }
+    },
+    "/api/v1/subscriptions/plan": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Retrieve active subscription plan and period window for a project",
+        "description": "Retrieve active subscription plan details.\n\nEnforces workspace isolation by verifying the authenticated user is a project member.",
+        "operationId": "get_subscription_plan_api_v1_subscriptions_plan_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Target project ID",
+              "title": "Project Id"
+            },
+            "description": "Target project ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/usage": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Retrieve current billing period usage accounting and quota metrics",
+        "description": "Retrieve periodic usage metrics and quota ceiling.\n\nEnforces workspace isolation by verifying project membership.",
+        "operationId": "get_subscription_usage_api_v1_subscriptions_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Target project ID",
+              "title": "Project Id"
+            },
+            "description": "Target project ID"
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Usage metric key",
+              "default": "ai_plan_generations",
+              "title": "Metric"
+            },
+            "description": "Usage metric key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionUsageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/entitlements": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Retrieve feature entitlements and quotas for a plan tier or project",
+        "description": "Retrieve entitlements configuration for the requested tier or project subscription.",
+        "operationId": "get_subscription_entitlements_api_v1_subscriptions_entitlements_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional target project ID",
+              "title": "Project Id"
+            },
+            "description": "Optional target project ID"
+          },
+          {
+            "name": "tier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional tier name (FREE, TEAM, BUSINESS)",
+              "title": "Tier"
+            },
+            "description": "Optional tier name (FREE, TEAM, BUSINESS)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionEntitlementsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/upgrade-request": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Request workspace plan tier change (demo workflow)",
+        "description": "Upgrade or switch workspace plan tier for demonstration workflows.\n\nEnforces project lead / admin permissions.",
+        "operationId": "request_upgrade_api_v1_subscriptions_upgrade_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpgradeRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -703,6 +937,17 @@
           "database": {
             "type": "string",
             "title": "Database"
+          },
+          "redis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis"
           },
           "environment": {
             "type": "string",
@@ -1132,6 +1377,145 @@
         "title": "ResendVerificationResponse",
         "description": "Response returned upon dispatching a verification email."
       },
+      "SubscriptionEntitlementsResponse": {
+        "properties": {
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "max_projects": {
+            "type": "integer",
+            "title": "Max Projects"
+          },
+          "max_team_members": {
+            "type": "integer",
+            "title": "Max Team Members"
+          },
+          "max_ai_generations_per_month": {
+            "type": "integer",
+            "title": "Max Ai Generations Per Month"
+          },
+          "ai_rate_limit_per_minute": {
+            "type": "integer",
+            "title": "Ai Rate Limit Per Minute"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_tier",
+          "display_name",
+          "max_projects",
+          "max_team_members",
+          "max_ai_generations_per_month",
+          "ai_rate_limit_per_minute",
+          "features"
+        ],
+        "title": "SubscriptionEntitlementsResponse",
+        "description": "Configured feature limits and quotas for a given plan tier."
+      },
+      "SubscriptionPlanResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "current_period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Current Period Start"
+          },
+          "current_period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Current Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "plan_tier",
+          "status",
+          "current_period_start",
+          "current_period_end"
+        ],
+        "title": "SubscriptionPlanResponse",
+        "description": "Active subscription status and billing period window."
+      },
+      "SubscriptionUsageResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "utilization_percent": {
+            "type": "number",
+            "title": "Utilization Percent"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "plan_tier",
+          "metric",
+          "used",
+          "limit",
+          "remaining",
+          "utilization_percent",
+          "period_start",
+          "period_end"
+        ],
+        "title": "SubscriptionUsageResponse",
+        "description": "Usage accounting metrics, limit, and utilization rate for current period."
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -1164,6 +1548,67 @@
         ],
         "title": "TokenResponse",
         "description": "Bearer JWT access token and opaque refresh token pair."
+      },
+      "UpgradeRequestPayload": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "requested_tier": {
+            "type": "string",
+            "title": "Requested Tier",
+            "description": "Requested tier: FREE, TEAM, or BUSINESS"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "requested_tier"
+        ],
+        "title": "UpgradeRequestPayload",
+        "description": "Demo upgrade request payload."
+      },
+      "UpgradeResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "plan_tier": {
+            "type": "string",
+            "title": "Plan Tier"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "current_period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Current Period Start"
+          },
+          "current_period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Current Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "plan_tier",
+          "status",
+          "message",
+          "current_period_start",
+          "current_period_end"
+        ],
+        "title": "UpgradeResponse",
+        "description": "Response returned upon upgrading subscription tier."
       },
       "UserResponse": {
         "properties": {

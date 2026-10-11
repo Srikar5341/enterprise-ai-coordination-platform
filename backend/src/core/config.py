@@ -52,11 +52,75 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None
     LLM_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
 
+    # Redis Cache & Rate Limiting
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_DB: int = 0
+    REDIS_ENABLED: bool = True
+    _REDIS_URL: Optional[str] = None
+
+    @computed_field
+    @property
+    def REDIS_URL(self) -> str:
+        if self._REDIS_URL:
+            return self._REDIS_URL
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
     # Logging
     LOG_LEVEL: str = "INFO"
+
+
+# Centralized SaaS Subscription Plan Entitlements & Limits
+PLAN_ENTITLEMENTS = {
+    "FREE": {
+        "tier": "FREE",
+        "display_name": "Free Community Tier",
+        "max_projects": 2,
+        "max_team_members": 5,
+        "max_ai_generations_per_month": 20,
+        "ai_rate_limit_per_minute": 3,
+        "features": ["ai_planning_basic", "kanban_board", "standard_notifications"],
+    },
+    "TEAM": {
+        "tier": "TEAM",
+        "display_name": "Team Professional Tier",
+        "max_projects": 10,
+        "max_team_members": 25,
+        "max_ai_generations_per_month": 200,
+        "ai_rate_limit_per_minute": 10,
+        "features": [
+            "ai_planning_basic",
+            "ai_planning_advanced",
+            "kanban_board",
+            "priority_notifications",
+            "workload_allocation",
+        ],
+    },
+    "BUSINESS": {
+        "tier": "BUSINESS",
+        "display_name": "Business Enterprise Tier",
+        "max_projects": 50,
+        "max_team_members": 100,
+        "max_ai_generations_per_month": 1000,
+        "ai_rate_limit_per_minute": 30,
+        "features": [
+            "ai_planning_basic",
+            "ai_planning_advanced",
+            "kanban_board",
+            "priority_notifications",
+            "workload_allocation",
+            "recovery_engine",
+            "custom_audit_logs",
+        ],
+    },
+}
 
 
 @lru_cache()
 def get_settings() -> Settings:
     """Return cached application settings instance."""
     return Settings()
+

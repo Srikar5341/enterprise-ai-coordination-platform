@@ -20,18 +20,26 @@ services:
       timeout: 5s
       retries: 10
 
+  # Redis 7 (In-Memory Cache & Distributed Burst Rate Limiter)
+  redis:
+    image: redis:7-alpine
+    container_name: ai_coordination_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ---------------------------------------------------------------------------
   # Infrastructure Roadmap (Tracked for future approved requirements):
   # ---------------------------------------------------------------------------
-  # 1. Redis: Intended for shared caching, rate limiting, and task coordination
-  #    once concrete usage requirements are approved.
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: ai_coordination_redis
-  #   ports:
-  #     - "6379:6379"
-  #
-  # 2. MinIO: Intended for S3-compatible object storage for file attachments
+  # 1. MinIO: Intended for S3-compatible object storage for file attachments
   #    and document assets once concrete storage requirements are approved.
   # minio:
   #   image: minio/minio:latest
@@ -44,3 +52,6 @@ services:
 volumes:
   mysql_data:
     driver: local
+  redis_data:
+    driver: local
+
