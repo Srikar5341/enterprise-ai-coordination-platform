@@ -1,0 +1,16 @@
+schema: spec-driven
+
+# Project context
+# Concise pointers for AI agents working with OpenSpec artifacts.
+context: |
+  Project: Enterprise AI Team Coordination & Recovery Platform
+  Architecture & Invariants: See docs/ARCHITECTURE.md and .agents/rules/architecture-invariants.md
+  Product Brief: See docs/PRODUCT_BRIEF.md
+  MVP Scope: See docs/MVP_SCOPE.md
+  Shared API Contract (Proposed): See docs/API_CONTRACT.md
+  AI Guardrails: See docs/AI_GUARDRAILS.md
+  Decisions & Open Questions: See docs/DECISIONS_REQUIRED.md and docs/decisions/
+  Core Stack: FastAPI (Python 3), MySQL 8, SQLAlchemy 2.x, Alembic, React (Vite), Android (Jetpack Compose, Kotlin)
+  Contract Rule: Shared REST API under /api/v1 (62 endpoints). Clients never connect directly to MySQL.
+  Locked Backend Port: Default 12345 (http://localhost:12345/api/v1; Android emulator: http://10.0.2.2:12345/api/v1)
+

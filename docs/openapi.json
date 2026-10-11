@@ -1,0 +1,745 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Enterprise AI Team Coordination Platform",
+    "description": "Backend platform for AI-powered team coordination, task allocation, and recovery planning.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Service health and database readiness check",
+        "description": "Evaluate service liveness and database ping readiness.\n\nReturns HTTP 200 when healthy, or HTTP 503 when the database is unreachable.",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Service is healthy and database is connected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is degraded and database is disconnected"
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/goals": {
+      "post": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Submit operational goal for project",
+        "description": "Submit an operational goal for an active project requiring project lead authorization.",
+        "operationId": "create_project_goal_api_v1_projects__project_id__goals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/plan/generate": {
+      "post": {
+        "tags": [
+          "AI Planning"
+        ],
+        "summary": "Generate and stage structured task-plan proposal from goal",
+        "description": "Generate a structured, dependency-aware plan proposal using hosted LLM and stage in plan_proposals.",
+        "operationId": "generate_plan_api_v1_ai_plan_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanProposalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/plan-proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "AI Planning"
+        ],
+        "summary": "Retrieve active staged plan proposal for human review",
+        "description": "Retrieve staged proposal by proposal_id, refreshing stale state if goal changed or expired.",
+        "operationId": "get_plan_proposal_api_v1_ai_plan_proposals__proposal_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanProposalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/plan-proposals/{proposal_id}/approve": {
+      "post": {
+        "tags": [
+          "AI Planning"
+        ],
+        "summary": "Approve proposal and atomically create tasks and dependencies",
+        "description": "Explicit human approval executing atomic transaction in MySQL to create active tasks and dependencies.",
+        "operationId": "approve_plan_proposal_api_v1_ai_plan_proposals__proposal_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalApprovalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/plan-proposals/{proposal_id}/reject": {
+      "post": {
+        "tags": [
+          "AI Planning"
+        ],
+        "summary": "Reject proposal with feedback and write zero tasks",
+        "description": "Explicit human rejection updating proposal status to REJECTED and writing zero active tasks.",
+        "operationId": "reject_plan_proposal_api_v1_ai_plan_proposals__proposal_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalRejectRequest",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalRejectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GoalCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Title",
+            "description": "Goal title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Detailed goal context"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Target Date",
+            "description": "Target completion datetime (must be UTC and in the future)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "target_date"
+        ],
+        "title": "GoalCreateRequest"
+      },
+      "GoalResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Target Date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoalStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "title",
+          "target_date",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GoalResponse"
+      },
+      "GoalStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_PLANNING",
+          "PLANNED",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "title": "GoalStatus"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "database",
+          "environment"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response payload schema."
+      },
+      "PlanGenerateRequest": {
+        "properties": {
+          "goal_id": {
+            "type": "string",
+            "title": "Goal Id",
+            "description": "UUID of the existing goal to plan"
+          },
+          "additional_instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Instructions",
+            "description": "Optional steering instructions for LLM"
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal_id"
+        ],
+        "title": "PlanGenerateRequest"
+      },
+      "PlanProposalResponse": {
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "title": "Proposal Id"
+          },
+          "goal_id": {
+            "type": "string",
+            "title": "Goal Id"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlanProposalStatus"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedTask"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedDependency"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "goal_id",
+          "project_id",
+          "status",
+          "tasks",
+          "dependencies",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "PlanProposalResponse"
+      },
+      "PlanProposalStatus": {
+        "type": "string",
+        "enum": [
+          "GENERATED",
+          "VALIDATED",
+          "APPROVED",
+          "REJECTED",
+          "STALE",
+          "PERSISTENCE_FAILED"
+        ],
+        "title": "PlanProposalStatus"
+      },
+      "ProposalApprovalResponse": {
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "title": "Proposal Id"
+          },
+          "goal_id": {
+            "type": "string",
+            "title": "Goal Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "APPROVED"
+          },
+          "created_tasks_count": {
+            "type": "integer",
+            "title": "Created Tasks Count"
+          },
+          "created_dependencies_count": {
+            "type": "integer",
+            "title": "Created Dependencies Count"
+          },
+          "task_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Task Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "goal_id",
+          "created_tasks_count",
+          "created_dependencies_count",
+          "task_ids"
+        ],
+        "title": "ProposalApprovalResponse"
+      },
+      "ProposalRejectRequest": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Rejection rationale or refinement instructions"
+          }
+        },
+        "type": "object",
+        "title": "ProposalRejectRequest"
+      },
+      "ProposalRejectResponse": {
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "title": "Proposal Id"
+          },
+          "goal_id": {
+            "type": "string",
+            "title": "Goal Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "REJECTED"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "goal_id"
+        ],
+        "title": "ProposalRejectResponse"
+      },
+      "ProposedDependency": {
+        "properties": {
+          "prerequisite_temp_id": {
+            "type": "string",
+            "title": "Prerequisite Temp Id",
+            "description": "temp_id of task that must complete first"
+          },
+          "dependent_temp_id": {
+            "type": "string",
+            "title": "Dependent Temp Id",
+            "description": "temp_id of task that depends on the prerequisite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prerequisite_temp_id",
+          "dependent_temp_id"
+        ],
+        "title": "ProposedDependency"
+      },
+      "ProposedTask": {
+        "properties": {
+          "temp_id": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Temp Id",
+            "description": "Temporary identifier (e.g. T1, T2)"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Title",
+            "description": "Task title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "description": "Detailed task scope"
+          },
+          "estimated_hours": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Estimated Hours",
+            "description": "Estimated duration in hours"
+          },
+          "required_skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Skills",
+            "description": "List of required team competencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temp_id",
+          "title",
+          "description",
+          "estimated_hours"
+        ],
+        "title": "ProposedTask"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

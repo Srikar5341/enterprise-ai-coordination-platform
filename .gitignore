@@ -218,3 +218,33 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / Web Frontend (React + Vite)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+web/dist/
+web/dist-ssr/
+*.local
+
+# Android / Kotlin / Gradle
+.gradle/
+build/
+android/app/build/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+.externalNativeBuild/
+.cxx/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
