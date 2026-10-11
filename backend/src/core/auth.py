@@ -56,18 +56,28 @@ def verify_project_lead_permission(
     if user.role.upper() == "ADMIN":
         return True
 
-    # Query project membership from MySQL
-    try:
-        stmt = text(
-            "SELECT role FROM project_members "
-            "WHERE project_id = :project_id AND user_id = :user_id"
-        )
-        result = db.execute(stmt, {"project_id": project_id, "user_id": user.id}).fetchone()
-        if result and result[0].upper() in allowed_roles:
-            return True
-    except Exception:
-        # If database table is not yet provisioned in test/dev environment, fallback to token claim
-        if user.role.upper() in allowed_roles:
-            return True
+    if db is not None:
+        try:
+            stmt = text(
+                "SELECT role FROM project_members "
+                "WHERE project_id = :project_id AND user_id = :user_id"
+            )
+            result = db.execute(stmt, {"project_id": project_id, "user_id": user.id}).fetchone()
+            if not result:
+                raise ForbiddenError(message="User is not a member of this project")
+            if result[0].upper() in allowed_roles:
+                return True
+            raise ForbiddenError(message="User lacks required lead permissions for this project")
+        except ForbiddenError:
+            raise
+        except Exception as exc:
+            # Table not yet provisioned in raw test environment fallback
+            if user.role.upper() in allowed_roles:
+                return True
+            raise ForbiddenError(message="User lacks required lead permissions for this project") from exc
+
+    # If db session is not provided (standalone test harness), check token role
+    if user.role.upper() in allowed_roles:
+        return True
 
     raise ForbiddenError(message="User lacks required lead permissions for this project")

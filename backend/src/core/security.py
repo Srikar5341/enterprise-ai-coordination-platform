@@ -1,7 +1,10 @@
 """JWT security utilities, token creation, and validation."""
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+import bcrypt
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 
@@ -45,3 +48,33 @@ def decode_access_token(token: str) -> Dict[str, Any]:
         raise UnauthorizedError(message="Authentication token has expired") from exc
     except InvalidTokenError as exc:
         raise UnauthorizedError(message="Invalid authentication token signature or payload") from exc
+
+
+def hash_password(password: str) -> str:
+    """Hash a plaintext password using bcrypt with automatic salt generation."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against a bcrypt hashed password."""
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def generate_refresh_token() -> str:
+    """Generate a high-entropy cryptographically secure opaque refresh token."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_token(token: str) -> str:
+    """Compute SHA-256 hex digest of a token for secure database storage and lookup."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_verification_token() -> str:
+    """Generate a cryptographically secure random token for email verification."""
+    return secrets.token_urlsafe(32)
+

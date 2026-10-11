@@ -90,6 +90,16 @@ class ConflictError(AppException):
         )
 
 
+class RateLimitError(AppException):
+    def __init__(self, message: str = "Rate limit exceeded. Please wait before retrying.", details: Optional[Any] = None):
+        super().__init__(
+            code="RATE_LIMIT_EXCEEDED",
+            message=message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            details=details,
+        )
+
+
 class ValidationError(AppException):
     def __init__(self, message: str = "Validation failed", details: Optional[Any] = None):
         super().__init__(

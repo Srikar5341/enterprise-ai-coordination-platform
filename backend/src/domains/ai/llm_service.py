@@ -131,7 +131,7 @@ class LLMService:
             "temperature": 0.2,
         }
 
-        http_client = client or httpx.Client(timeout=30.0)
+        http_client = client or httpx.Client(timeout=90.0)
         try:
             response = http_client.post(
                 endpoint,

@@ -27,6 +27,7 @@ settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Import domain models so Base.metadata is fully populated for autogenerate
+from src.domains.auth.models import User, RefreshToken
 from src.domains.projects.models import Project, ProjectMember
 from src.domains.goals.models import Goal
 from src.domains.ai.models import PlanProposal

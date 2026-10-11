@@ -125,11 +125,17 @@ Per project governance rules, no architectural choice, schema definition, or tec
 
 ---
 
-### Decision 12: User Provisioning and Account Registration
-- **Current Status**: **Unresolved**
-- **Context**: The authentication design specifies login, token refresh, and logout for pre-provisioned user records, but does not define public self-registration or admin provisioning endpoints.
-- **Options**:
-  1. *Database Seed Users*: Pre-populate demo users (e.g., `lead@example.com`, `engineer@example.com`) via Alembic/migration seed scripts for the hackathon demo.
-  2. *Admin User Provisioning Endpoint*: Add an admin-restricted endpoint `POST /api/v1/users` to create team member accounts.
-  3. *Public Self-Registration*: Add `POST /api/v1/auth/register` (increases attack surface; out of scope for internal enterprise tool).
-- **Approval Required**: Member 2 (Project Owner).
+### Decision 12: User Provisioning, Account Registration, and Email Verification Lifecycle
+- **Current Status**: **Accepted & Implemented (Email Verification Lifecycle Complete; Outbound Provider Selection for Phase 3)**
+- **Implemented Decision & Architecture**:
+  - **Development Bootstrap**: Implemented an idempotent bootstrap utility (`src/core/bootstrap.py`) that provisions a demo lead user (`lead@revora.local`), sample project, and `LEAD` membership directly in MySQL without hardcoding production credentials or exposing secrets.
+  - **Secure Token Hashing & Storage**: Registration generates high-entropy verification tokens; only the SHA-256 hex digest (`verification_token_hash`) is persisted. Raw tokens are never persisted or exposed in response payloads.
+  - **Token Expiry & Single-Use Enforcement**: Tokens expire after 24 hours (`verification_token_expires_at`). Replay or re-verification attempts are rejected with `HTTP 409 Conflict` using `verification_token_consumed_at`.
+  - **Mandatory Login Gate**: Unverified accounts are strictly barred from logging in (`POST /api/v1/auth/login` returns `HTTP 403 Forbidden` with code `FORBIDDEN`). Seeded demo accounts remain pre-verified.
+  - **Rate-Limited Resend**: `POST /api/v1/auth/resend-verification` enforces a 60-second database-backed cooldown and daily attempt ceiling directly in MySQL without requiring Redis (`HTTP 429 Too Many Requests`).
+  - **Verification Endpoint**: `POST /api/v1/auth/verify-email` validates the presented token hash, updates `is_verified = True`, records consumption, and enables subsequent login.
+  - **Pluggable Delivery Interface**: Abstract `EmailDeliveryProvider` with `UnconfiguredEmailProvider` as the production default and `DevInMemoryEmailSink` for automated tests and development workflows.
+- **Unresolved Production Scope (Phase 3)**: Selection of outbound transactional email delivery service (AWS SES, SendGrid, Resend, or SMTP) and enterprise admin provisioning endpoints (`POST /api/v1/users`).
+
+
+
